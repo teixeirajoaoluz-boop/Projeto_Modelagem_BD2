@@ -1,0 +1,167 @@
+-- =====================================================================
+-- CRIAÇÃO DO BANCO
+-- =====================================================================
+CREATE DATABASE IF NOT EXISTS oficina_db
+  DEFAULT CHARACTER SET utf8mb4
+  DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE oficina_db;
+
+-- =====================================================================
+-- CLIENTE
+-- =====================================================================
+CREATE TABLE Cliente (
+  idCliente INT AUTO_INCREMENT,
+  nome VARCHAR(60) NOT NULL,
+  endereco VARCHAR(100) NOT NULL,
+  telefone VARCHAR(20),
+  PRIMARY KEY (idCliente)
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- VEÍCULO
+-- =====================================================================
+CREATE TABLE Veiculo (
+  idVeiculo INT AUTO_INCREMENT,
+  placa VARCHAR(10) NOT NULL UNIQUE,
+  modelo VARCHAR(45) NOT NULL,
+  marca VARCHAR(45) NOT NULL,
+  ano INT NOT NULL,
+  Cliente_idCliente INT NOT NULL,
+  PRIMARY KEY (idVeiculo),
+  CONSTRAINT fk_veiculo_cliente
+    FOREIGN KEY (Cliente_idCliente) REFERENCES Cliente(idCliente)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- MECÂNICO
+-- =====================================================================
+CREATE TABLE Mecanico (
+  idMecanico INT AUTO_INCREMENT,
+  nome VARCHAR(60) NOT NULL,
+  endereco VARCHAR(100),
+  especialidade VARCHAR(45),
+  PRIMARY KEY (idMecanico)
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- EQUIPE
+-- =====================================================================
+CREATE TABLE Equipe (
+  idEquipe INT AUTO_INCREMENT,
+  nomeEquipe VARCHAR(45) NOT NULL,
+  PRIMARY KEY (idEquipe)
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- RELACIONAMENTO EQUIPE x MECÂNICO (N:N)
+-- =====================================================================
+CREATE TABLE Equipe_Mecanico (
+  idEquipe INT NOT NULL,
+  idMecanico INT NOT NULL,
+  PRIMARY KEY (idEquipe, idMecanico),
+  CONSTRAINT fk_eqmec_equipe
+    FOREIGN KEY (idEquipe) REFERENCES Equipe(idEquipe)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_eqmec_mecanico
+    FOREIGN KEY (idMecanico) REFERENCES Mecanico(idMecanico)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- ORDEM DE SERVIÇO (OS)
+-- =====================================================================
+CREATE TABLE OrdemServico (
+  idOS INT AUTO_INCREMENT,
+  dataEmissao DATE NOT NULL,
+  dataConclusaoPrevista DATE NOT NULL,
+  valorTotal DECIMAL(10,2) DEFAULT 0,
+  status ENUM('ABERTA','AUTORIZADA','EM EXECUCAO','CONCLUIDA','CANCELADA') NOT NULL DEFAULT 'ABERTA',
+  Veiculo_idVeiculo INT NOT NULL,
+  Equipe_idEquipe INT NOT NULL,
+  PRIMARY KEY (idOS),
+  CONSTRAINT fk_os_veiculo
+    FOREIGN KEY (Veiculo_idVeiculo) REFERENCES Veiculo(idVeiculo)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_os_equipe
+    FOREIGN KEY (Equipe_idEquipe) REFERENCES Equipe(idEquipe)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- SERVIÇO (TABELA DE REFERÊNCIA DE MÃO DE OBRA)
+-- =====================================================================
+CREATE TABLE Servico (
+  idServico INT AUTO_INCREMENT,
+  descricao VARCHAR(100) NOT NULL,
+  valorMaoDeObra DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY (idServico)
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- SERVIÇOS EXECUTADOS NA OS (N:N)
+-- =====================================================================
+CREATE TABLE OS_Servico (
+  idOS INT NOT NULL,
+  idServico INT NOT NULL,
+  quantidade INT NOT NULL DEFAULT 1,
+  valorCalculado DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY (idOS, idServico),
+  CONSTRAINT fk_osserv_os
+    FOREIGN KEY (idOS) REFERENCES OrdemServico(idOS)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_osserv_servico
+    FOREIGN KEY (idServico) REFERENCES Servico(idServico)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- PEÇAS
+-- =====================================================================
+CREATE TABLE Peca (
+  idPeca INT AUTO_INCREMENT,
+  descricao VARCHAR(100) NOT NULL,
+  valorUnitario DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY (idPeca)
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- PEÇAS UTILIZADAS NA OS (N:N)
+-- =====================================================================
+CREATE TABLE OS_Peca (
+  idOS INT NOT NULL,
+  idPeca INT NOT NULL,
+  quantidade INT NOT NULL DEFAULT 1,
+  valorCalculado DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY (idOS, idPeca),
+  CONSTRAINT fk_ospeca_os
+    FOREIGN KEY (idOS) REFERENCES OrdemServico(idOS)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_ospeca_peca
+    FOREIGN KEY (idPeca) REFERENCES Peca(idPeca)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================================
+-- AUTORIZAÇÃO DO CLIENTE (1:1 COM OS)
+-- =====================================================================
+CREATE TABLE Autorizacao (
+    idAutorizacao INT AUTO_INCREMENT,
+    idOS INT NOT NULL UNIQUE,
+    dataAutorizacao DATETIME NOT NULL,
+    autorizado ENUM('SIM', 'NAO') NOT NULL,
+    PRIMARY KEY (idAutorizacao),
+    CONSTRAINT fk_autorizacao_os FOREIGN KEY (idOS)
+        REFERENCES OrdemServico (idOS)
+        ON DELETE CASCADE ON UPDATE CASCADE
+)  ENGINE=INNODB;
